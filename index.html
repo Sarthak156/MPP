@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Based Real-Time Object Detection &amp; Perception System for Autonomous Vehicles — Presentation</title>
+<style>
+/* ============================================================
+   DESIGN SYSTEM
+============================================================ */
+:root{
+  --bg0:#050b14; --bg1:#081424; --panel:#0d1c31; --panel2:#122540; --panelHi:#16304f;
+  --line:#1d3a5c; --lineHi:#2b527d;
+  --cyan:#38bdf8; --cyanDim:#0e4a6e; --blue:#3b82f6; --teal:#2dd4bf;
+  --amber:#fbbf24; --red:#f87171; --green:#34d399; --violet:#a78bfa;
+  --ink:#e9f1fc; --mut:#8fa6c6; --mut2:#5f7b9c;
+  --mono:'Cascadia Code',Consolas,'DejaVu Sans Mono',Menlo,monospace;
+  --sans:'Segoe UI',system-ui,-apple-system,Roboto,'DejaVu Sans',Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:#03070d; color:var(--ink); font-family:var(--sans);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+#app{position:fixed; inset:0}
+#deck{
+  position:absolute; left:50%; top:50%; width:1280px; height:720px;
+  transform:translate(-50%,-50%); transform-origin:center;
+  background:
+    radial-gradient(1100px 560px at 78% -12%, rgba(56,189,248,.13), transparent 60%),
+    radial-gradient(880px 520px at -8% 112%, rgba(59,130,246,.10), transparent 55%),
+    linear-gradient(180deg,#081322 0%,#050c17 100%);
+  overflow:hidden; border-radius:6px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px #14283f;
+}
+/* faint blueprint grid */
+#deck::before{
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+  background:
+    linear-gradient(rgba(56,189,248,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,.045) 1px, transparent 1px);
+  background-size:64px 64px;
+}
+#deck::after{ /* vignette */
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(120% 120% at 50% 40%, transparent 55%, rgba(2,5,10,.55) 100%);
+}
+
+/* ============ progress + hud ============ */
+#bar{position:absolute; top:0; left:0; right:0; height:3px; background:rgba(56,189,248,.12); z-index:40}
+#bar i{display:block; height:100%; width:10%; border-radius:0 3px 3px 0;
+  background:linear-gradient(90deg,var(--blue),var(--cyan)); box-shadow:0 0 12px rgba(56,189,248,.7);
+  transition:width .45s cubic-bezier(.2,.7,.2,1)}
+#hud{position:absolute; z-index:40; left:40px; top:22px; display:flex; align-items:center; gap:12px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--mut2)}
+#hud .dot{width:8px; height:8px; border-radius:50%; background:var(--cyan);
+  box-shadow:0 0 10px var(--cyan); animation:blip 2.4s infinite}
+@keyframes blip{0%,100%{opacity:1}50%{opacity:.35}}
+#count{position:absolute; z-index:40; right:40px; top:18px; font-family:var(--mono);
+  font-size:12px; letter-spacing:.2em; color:var(--mut)}
+#count b{color:var(--cyan); font-weight:600}
+nav#nav{position:absolute; z-index:40; right:34px; bottom:26px; display:flex; gap:8px}
+#nav button, #fs{
+  width:38px; height:38px; border-radius:10px; border:1px solid var(--line);
+  background:rgba(13,28,49,.85); color:var(--mut); font-size:16px; cursor:pointer;
+  transition:.2s; display:flex; align-items:center; justify-content:center; font-family:var(--mono)
+}
+#nav button:hover, #fs:hover{color:#fff; border-color:var(--cyan); box-shadow:0 0 14px rgba(56,189,248,.35)}
+#fs{position:absolute; z-index:40; right:132px; bottom:26px; font-size:14px}
+#hint{position:absolute; z-index:40; left:40px; bottom:30px; font-family:var(--mono);
+  font-size:10.5px; letter-spacing:.12em; color:var(--mut2)}
+@media (max-width:760px){ #hint{display:none} }
+
+/* ============ slides ============ */
+.slide{
+  position:absolute; inset:0; padding:58px 68px 64px; opacity:0; visibility:hidden;
+  transform:translateX(46px) scale(.985); pointer-events:none; z-index:1;
+  transition:opacity .5s ease, transform .55s cubic-bezier(.2,.7,.2,1), visibility 0s .5s;
+}
+.slide.active{opacity:1; visibility:visible; transform:none; pointer-events:auto; z-index:5;
+  transition:opacity .5s ease, transform .55s cubic-bezier(.2,.7,.2,1)}
+#deck.back .slide{transform:translateX(-46px) scale(.985)}
+#deck.back .slide.active{transform:none}
+
+/* staggered reveal */
+.rv{opacity:0}
+.slide.active .rv{animation:rise .62s cubic-bezier(.16,.8,.26,.99) both; animation-delay:var(--d,0s)}
+@keyframes rise{from{opacity:0; transform:translateY(24px)} to{opacity:1; transform:translateY(0)}}
+
+/* headers */
+.kick{font-family:var(--mono); font-size:12px; letter-spacing:.3em; color:var(--cyan);
+  text-transform:uppercase; display:flex; align-items:center; gap:14px; margin-bottom:12px}
+.kick::after{content:""; height:1px; width:64px; background:linear-gradient(90deg,var(--cyan),transparent)}
+h2.t{font-size:34px; line-height:1.15; margin:0 0 10px; font-weight:700; letter-spacing:-.01em}
+h2.t em{font-style:normal; background:linear-gradient(90deg,#7dd3fc,#38bdf8 55%,#818cf8);
+  -webkit-background-clip:text; background-clip:text; color:transparent}
+.lead{color:var(--mut); font-size:15px; line-height:1.65; max-width:640px; margin:0 0 18px}
+.lead b, .lead strong{color:var(--ink); font-weight:600}
+
+.ic{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; flex:none}
+
+/* generic panel */
+.panel{background:linear-gradient(180deg,rgba(18,37,64,.72),rgba(11,23,40,.72));
+  border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+  box-shadow:0 18px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(148,197,255,.06)}
+
+/* quote bar */
+.quote{display:flex; gap:14px; align-items:center; border-left:3px solid var(--cyan);
+  background:linear-gradient(90deg,rgba(56,189,248,.10),rgba(56,189,248,.02));
+  border-radius:0 12px 12px 0; padding:13px 18px; color:#cfe6fb; font-size:15px}
+.quote b{color:#fff}
+
+/* ============================================================
+   SLIDE 1 — TITLE
+============================================================ */
+#s1{display:flex; flex-direction:column; padding-bottom:210px}
+#s1 .kick{margin-top:26px}
+#s1 h1{font-size:46px; line-height:1.16; margin:6px 0 18px; max-width:790px; font-weight:750; letter-spacing:-.015em}
+#s1 h1 .hl{background:linear-gradient(90deg,#7dd3fc,#38bdf8 50%,#818cf8);
+  -webkit-background-clip:text; background-clip:text; color:transparent}
+#s1 .chips{display:flex; align-items:center; gap:10px; margin-bottom:26px}
+#s1 .chip{font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:#bfe3fb;
+  border:1px solid var(--lineHi); border-radius:999px; padding:7px 16px;
+  background:rgba(14,35,58,.7)}
+#s1 .plus{color:var(--cyan); font-weight:700}
+#s1 .meta{position:absolute; right:68px; bottom:198px; width:330px; z-index:3}
+#s1 .meta .row{padding:9px 0; border-bottom:1px dashed rgba(45,90,140,.35)}
+#s1 .meta .row:last-child{border-bottom:none}
+#s1 .meta .lab{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--cyan);
+  text-transform:uppercase; margin-bottom:5px}
+#s1 .meta .val{font-size:13.5px; color:#dbe8f7; line-height:1.55}
+#s1 .meta .member{display:flex; justify-content:space-between; align-items:baseline; gap:14px; padding:2.5px 0}
+#s1 .meta .member .nm{color:#dbe8f7}
+#s1 .meta .member .roll{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; color:#7fa3c8; white-space:nowrap}
+
+/* animated road */
+.roadwrap{position:absolute; left:0; right:0; bottom:0; height:196px; overflow:hidden; z-index:2}
+.roadwrap::before{content:""; position:absolute; left:-10%; right:-10%; bottom:-118px; height:230px;
+  background:
+    linear-gradient(90deg,transparent 8%, rgba(56,189,248,.16) 9%, transparent 10%, transparent 90%, rgba(56,189,248,.16) 91%, transparent 92%),
+    linear-gradient(180deg,#0c1a2c,#0a1524 30%,#111f33);
+  transform:perspective(340px) rotateX(58deg); border-top:2px solid rgba(125,211,252,.5);
+  box-shadow:0 -6px 30px rgba(56,189,248,.18)}
+.lanes{position:absolute; left:50%; bottom:-120px; width:220px; height:260px;
+  transform:translateX(-50%) perspective(340px) rotateX(58deg)}
+.lanes::before{content:""; position:absolute; inset:0;
+  background:repeating-linear-gradient(180deg, #ffd54a 0 26px, transparent 26px 64px);
+  animation:roadmove .8s linear infinite; filter:drop-shadow(0 0 6px rgba(255,213,74,.45))}
+@keyframes roadmove{to{transform:translateY(64px)}}
+.scanbeam{position:absolute; left:12%; right:12%; bottom:190px; height:1px; z-index:2;
+  background:linear-gradient(90deg,transparent,rgba(125,211,252,.8),transparent);
+  filter:blur(.4px); animation:beam 3.2s ease-in-out infinite alternate}
+@keyframes beam{from{transform:translateY(6px) scaleX(.7); opacity:.4} to{transform:translateY(26px) scaleX(1); opacity:1}}
+
+/* ============================================================
+   SLIDE 2 — INTRODUCTION
+============================================================ */
+.cols{display:grid; grid-template-columns:1fr 470px; gap:34px; align-items:start}
+.aims{display:grid; grid-template-columns:1fr 1fr; gap:9px 18px; margin:2px 0 18px}
+.aim{display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:#c9d9ee; line-height:1.45}
+.aim .ic{width:17px; height:17px; color:var(--green); margin-top:1px;
+  background:rgba(52,211,153,.12); border-radius:6px; padding:3px; box-sizing:content-box;
+  width:12px; height:12px}
+
+/* camera feed demo */
+.cam{position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--lineHi);
+  aspect-ratio:470/318; background:linear-gradient(180deg,#13253c 0%,#0e1b2e 46%,#141d2b 46%)}
+.cam .scene{position:absolute; inset:0}
+.cam .horizon{position:absolute; left:0; right:0; top:46%; height:2px;
+  background:linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)}
+.cam .asphalt{position:absolute; left:0; right:0; top:46%; bottom:0; background:#10192a}
+.cam .asphalt::before{content:""; position:absolute; left:50%; top:0; bottom:0; width:7px;
+  transform:translateX(-50%);
+  background:repeating-linear-gradient(180deg,#ffd54a 0 16px, transparent 16px 44px);
+  animation:roadmove .55s linear infinite}
+.cam .car{position:absolute; left:13%; bottom:14%; width:104px; height:46px; background:#1c2c44;
+  border-radius:9px; border:1px solid #2c4468}
+.cam .car::before{content:""; position:absolute; top:8px; left:12px; right:12px; height:14px;
+  background:#0f1c30; border-radius:6px}
+.cam .car::after{content:""; position:absolute; bottom:6px; left:-4px; width:6px; height:6px;
+  border-radius:50%; background:#ff5b5b; box-shadow:-2px 0 12px #ff5b5b, 14px 0 0 #ff5b5b, 12px 0 12px #ff5b5b}
+.cam .person{position:absolute; right:20%; bottom:16%; width:16px; height:38px; background:#22344e;
+  border-radius:8px 8px 3px 3px; border:1px solid #33507a}
+.cam .person::before{content:""; position:absolute; top:-11px; left:2px; width:10px; height:10px;
+  border-radius:50%; background:#22344e; border:1px solid #33507a}
+.cam .tl{position:absolute; right:6%; bottom:26%; width:13px; height:30px; background:#0e1a2c;
+  border:1px solid #33507a; border-radius:3px}
+.cam .tl::before{content:""; position:absolute; top:3px; left:2.5px; width:6px; height:6px; border-radius:50%;
+  background:#4ade80; box-shadow:0 0 8px #4ade80}
+.cam .tl::after{content:""; position:absolute; top:12px; left:2.5px; width:6px; height:6px; border-radius:50%;
+  background:#715d2a}
+/* detection boxes */
+.bx{position:absolute; border:2px solid var(--cyan); border-radius:4px;
+  box-shadow:0 0 0 2000px rgba(6,14,26,0), inset 0 0 18px rgba(56,189,248,.12);
+  opacity:0; animation:bpop 8.5s infinite; animation-delay:var(--bd)}
+.bx::before{content:attr(data-l); position:absolute; top:-22px; left:-2px; font-family:var(--mono);
+  font-size:10px; letter-spacing:.06em; color:#04121f; background:var(--cyan);
+  padding:2px 7px; border-radius:4px 4px 4px 0; white-space:nowrap; font-weight:700}
+.bx::after{content:attr(data-id); position:absolute; bottom:-21px; right:-2px; font-family:var(--mono);
+  font-size:9.5px; color:var(--cyan); background:rgba(4,16,28,.85); border:1px solid var(--cyanDim);
+  padding:1px 6px; border-radius:4px}
+.bx.car-b{left:9%; bottom:11%; width:122px; height:66px}
+.bx.per-b{right:16.5%; bottom:12%; width:34px; height:62px; border-color:var(--green)}
+.bx.per-b::before{background:var(--green)}
+.bx.tl-b{right:3.5%; bottom:23%; width:31px; height:48px; border-color:var(--amber)}
+.bx.tl-b::before{background:var(--amber)}
+@keyframes bpop{0%{opacity:0; transform:scale(.86)} 5%{opacity:1; transform:scale(1)}
+  6%{transform:scale(1.03)} 7%,86%{opacity:1; transform:scale(1)} 93%,100%{opacity:0}}
+.cam .scanline{position:absolute; left:0; right:0; top:0; height:56px; pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(56,189,248,.16) 82%, rgba(125,211,252,.65));
+  animation:scan 3.4s linear infinite}
+@keyframes scan{from{top:-56px} to{top:100%}}
+.cam .hudline{position:absolute; left:12px; top:10px; display:flex; gap:8px; align-items:center;
+  font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:#9fd8f8}
+.cam .hudline .rec{width:8px; height:8px; border-radius:50%; background:var(--red);
+  box-shadow:0 0 8px var(--red); animation:blip 1.2s infinite}
+.cam .fps{position:absolute; right:12px; bottom:10px; font-family:var(--mono); font-size:10.5px;
+  color:var(--green); letter-spacing:.1em}
+.cam .corner{position:absolute; width:16px; height:16px; border:2px solid rgba(125,211,252,.4)}
+.cam .c1{left:8px; top:8px; border-right:none; border-bottom:none}
+.cam .c2{right:8px; top:8px; border-left:none; border-bottom:none}
+.cam .c3{left:8px; bottom:8px; border-right:none; border-top:none}
+.cam .c4{right:8px; bottom:8px; border-left:none; border-top:none}
+.cam-cap{margin-top:12px; font-family:var(--mono); font-size:10.5px; color:var(--mut2); letter-spacing:.1em; text-align:center}
+
+/* ============================================================
+   SLIDE 3 — PROBLEM
+============================================================ */
+.qgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:4px 0 16px}
+.q{display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid var(--line);
+  border-radius:11px; background:rgba(13,28,49,.6); font-size:13.5px; color:#c9d9ee;
+  transition:border-color .25s, box-shadow .25s}
+.q:hover{border-color:var(--cyan); box-shadow:0 0 16px rgba(56,189,248,.18)}
+.q .ic{color:var(--cyan)}
+.q b{color:#fff}
+/* fragmented -> unified */
+.frag{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 4px}
+.frag .fb{border:1.5px dashed #3a5578; border-radius:10px; padding:12px 8px; text-align:center;
+  color:#8fa6c6; font-size:12px; background:rgba(19,33,53,.5)}
+.frag .fb .ic{margin:0 auto 8px; color:#5f7b9c}
+.frag-tag{font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--amber); text-transform:uppercase}
+.merge{display:flex; flex-direction:column; align-items:center; margin:10px 0}
+.merge .ar{width:2px; height:26px; background:linear-gradient(180deg,var(--amber),var(--cyan)); position:relative}
+.merge .ar::after{content:""; position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
+  border:6px solid transparent; border-top-color:var(--cyan)}
+.pipe{position:relative; overflow:hidden; border-radius:12px; padding:15px 16px; text-align:center;
+  background:linear-gradient(90deg,#0e4a6e,#155e86 30%,#0d3f68 70%,#0e4a6e);
+  border:1px solid #2b87c4; color:#eaf6ff; font-size:14.5px; font-weight:600; letter-spacing:.02em;
+  box-shadow:0 0 26px rgba(56,189,248,.22), inset 0 0 24px rgba(56,189,248,.08)}
+.pipe i{position:absolute; top:0; bottom:0; width:70px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);
+  animation:shine 2.6s linear infinite}
+@keyframes shine{from{left:-80px} to{left:calc(100% + 40px)}}
+.pipe-tag{font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--cyan);
+  text-transform:uppercase; margin-top:10px; text-align:center}
+
+/* ============================================================
+   SLIDE 4 — OBJECTIVES
+============================================================ */
+.objgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:8px}
+.objcard{position:relative; height:100%; border:1px solid var(--line); border-radius:14px;
+  padding:20px 20px 18px; background:linear-gradient(180deg,rgba(18,37,64,.75),rgba(10,21,38,.75));
+  transition:transform .3s cubic-bezier(.2,.7,.2,1), border-color .3s, box-shadow .3s}
+.objcard:hover{transform:translateY(-6px); border-color:var(--cyan);
+  box-shadow:0 22px 44px rgba(0,0,0,.45), 0 0 20px rgba(56,189,248,.16)}
+.objcard .num{position:absolute; top:14px; right:16px; font-family:var(--mono); font-size:26px;
+  color:rgba(94,140,190,.24); font-weight:700}
+.objcard .ico{width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  background:rgba(56,189,248,.1); border:1px solid var(--cyanDim); color:var(--cyan); margin-bottom:14px}
+.objcard .ico .ic{width:22px; height:22px}
+.objcard h3{margin:0 0 7px; font-size:15.5px; color:#fff}
+.objcard p{margin:0; font-size:12.5px; line-height:1.55; color:var(--mut)}
+
+/* ============================================================
+   SLIDE 5 — LITERATURE
+============================================================ */
+.stats{display:flex; gap:14px; margin:6px 0 16px}
+.stat{flex:1; border:1px solid var(--line); border-radius:12px; padding:10px 16px;
+  background:rgba(13,28,49,.55); display:flex; align-items:baseline; gap:10px}
+.stat .n{font-family:var(--mono); font-size:24px; color:var(--cyan); font-weight:700}
+.stat .l{font-size:11px; color:var(--mut); letter-spacing:.06em; text-transform:uppercase}
+.lit-rows{display:flex; flex-direction:column; gap:9px}
+.lit{display:grid; grid-template-columns:1fr 130px 1.15fr; gap:14px; align-items:center;
+  border:1px solid var(--line); border-radius:12px; padding:11px 16px;
+  background:linear-gradient(90deg,rgba(15,31,53,.75),rgba(10,21,38,.55));
+  transition:border-color .25s}
+.lit:hover{border-color:var(--cyan)}
+.lit .pt{font-size:13px; color:#e5effb; line-height:1.4}
+.lit .venue{display:inline-block; margin-top:4px; font-family:var(--mono); font-size:9.5px;
+  color:var(--mut2); letter-spacing:.08em}
+.tag{justify-self:start; font-family:var(--mono); font-size:9.5px; letter-spacing:.12em;
+  padding:4px 10px; border-radius:999px; border:1px solid}
+.tag.dataset{color:var(--violet); border-color:rgba(167,139,250,.4); background:rgba(167,139,250,.08)}
+.tag.detection{color:var(--cyan); border-color:rgba(56,189,248,.4); background:rgba(56,189,248,.08)}
+.tag.tracking{color:var(--green); border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.08)}
+.tag.perception{color:var(--amber); border-color:rgba(251,191,36,.4); background:rgba(251,191,36,.08)}
+.lit .pc{font-size:12.5px; color:var(--mut); line-height:1.45}
+.flowline{display:flex; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap}
+.flowline .f{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:#cfe6fb;
+  border:1px solid var(--lineHi); padding:6px 12px; border-radius:8px; background:rgba(14,35,58,.7)}
+.flowline .a{color:var(--cyan); animation:pulseA 1.6s infinite}
+@keyframes pulseA{0%,100%{opacity:.35; transform:translateX(0)} 50%{opacity:1; transform:translateX(3px)}}
+.flowline .lab{font-size:11.5px; color:var(--mut2); margin-right:4px}
+
+/* ============================================================
+   SLIDE 6 — ARCHITECTURE
+============================================================ */
+#s6 .cols{grid-template-columns:1fr 462px 318px; gap:0 26px; align-items:start}
+.arch{position:relative}
+.arch svg{width:100%; height:auto; display:block}
+.abox{fill:#10233c; stroke:#2f6ba8; stroke-width:1.4; rx:10}
+.abox2{fill:#0d1e33; stroke:#275177; stroke-width:1.2}
+.alab{fill:#dcebfa; font-family:var(--sans); font-size:15px; font-weight:600; text-anchor:middle}
+.asub{fill:#7fa3c8; font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-anchor:middle}
+.awire{stroke:#2b527d; stroke-width:2; fill:none; stroke-dasharray:5 7; animation:dash 1.1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-12}}
+.aboxglow{animation:seq 7.2s infinite; animation-delay:calc(var(--i)*.75s)}
+@keyframes seq{0%,14%{fill:#10233c; stroke:#2f6ba8}
+ 4%{fill:#16405f; stroke:#38bdf8; filter:drop-shadow(0 0 7px rgba(56,189,248,.7))}
+ 100%{fill:#10233c; stroke:#2f6ba8}}
+.pulse{fill:#7dd3fc; filter:drop-shadow(0 0 5px #38bdf8)}
+.arch-inout{display:flex; flex-direction:column; gap:12px}
+.iochip{border:1px solid var(--lineHi); border-radius:12px; padding:12px 15px;
+  background:rgba(13,28,49,.65)}
+.iochip .h{font-family:var(--mono); font-size:10px; letter-spacing:.24em; color:var(--cyan); margin-bottom:6px}
+.iochip .b{font-size:12.5px; color:#c9d9ee; line-height:1.55}
+.feat{border:1px solid var(--line); border-radius:12px; padding:11px 14px; background:rgba(13,28,49,.45)}
+.feat .h{display:flex; gap:9px; align-items:center; font-size:13px; color:#fff; font-weight:600; margin-bottom:4px}
+.feat .h .ic{width:16px; height:16px; color:var(--cyan)}
+.feat p{margin:0; font-size:11.5px; color:var(--mut); line-height:1.5}
+
+/* ============================================================
+   SLIDE 7 — METHODOLOGY
+============================================================ */
+#s7 .cols{grid-template-columns:1fr 452px; gap:34px}
+.steps{position:relative; margin-top:4px}
+.steps::before{content:""; position:absolute; left:17px; top:8px; bottom:14px; width:2px;
+  background:linear-gradient(180deg,var(--cyan),var(--blue) 60%,transparent)}
+.step{position:relative; display:flex; gap:15px; padding:7.5px 0}
+.step .dot{width:36px; height:36px; border-radius:50%; flex:none; z-index:1;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:12px; color:var(--cyan);
+  background:#0a1a2e; border:1.5px solid var(--cyanDim); box-shadow:0 0 0 4px rgba(56,189,248,.06)}
+.step h4{margin:1px 0 2px; font-size:14px; color:#fff}
+.step h4 .sn{color:var(--cyan); font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; margin-right:8px}
+.step p{margin:0; font-size:12px; color:var(--mut); line-height:1.5}
+/* telemetry */
+.tel{display:flex; flex-direction:column; gap:12px}
+.teltop{display:flex; gap:12px}
+.telcam{position:relative; flex:1; min-width:0; border-radius:10px; overflow:hidden;
+  border:1px solid var(--lineHi); aspect-ratio:16/9.4; background:linear-gradient(180deg,#13253c 0%,#0e1b2e 46%,#131c2b 46%)}
+.telcam .asphalt{position:absolute; left:0; right:0; top:46%; bottom:0; background:#10192a}
+.telcam .asphalt::before{content:""; position:absolute; left:50%; top:0; bottom:0; width:5px; transform:translateX(-50%);
+  background:repeating-linear-gradient(180deg,#ffd54a 0 10px, transparent 10px 30px);
+  animation:roadmove .5s linear infinite}
+.telcam .car{position:absolute; left:16%; bottom:12%; width:66px; height:30px; background:#1c2c44;
+  border-radius:6px; border:1px solid #2c4468}
+.telcam .car::after{content:""; position:absolute; bottom:4px; left:-3px; width:4px; height:4px; border-radius:50%;
+  background:#ff5b5b; box-shadow:-2px 0 8px #ff5b5b}
+.telcam .bx2{position:absolute; left:10%; bottom:7%; width:78px; height:46px; border:2px solid var(--cyan);
+  border-radius:3px; animation:bx2p 2.2s ease-in-out infinite}
+.telcam .bx2::before{content:"CAR 0.94  #12"; position:absolute; top:-18px; left:-2px; font-family:var(--mono);
+  font-size:8.5px; background:var(--cyan); color:#04121f; font-weight:700; padding:1px 5px; border-radius:3px 3px 3px 0}
+@keyframes bx2p{0%,100%{transform:scale(1)} 50%{transform:scale(1.025)}}
+.telcam .bx2.p{left:62%; bottom:9%; width:26px; height:44px; border-color:var(--green); animation-delay:.4s}
+.telcam .bx2.p::before{content:"PERSON 0.88  #07"; background:var(--green)}
+.readouts{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.ro{border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:rgba(13,28,49,.55)}
+.ro .k{font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--mut2); text-transform:uppercase}
+.ro .v{font-family:var(--mono); font-size:17px; color:var(--cyan); margin-top:2px}
+.ro .v.warn{color:var(--amber)}
+.ro .v.crit{color:var(--red)}
+.gaugewrap{display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:10px;
+  padding:8px 14px; background:rgba(13,28,49,.55)}
+.gauge{width:132px; height:74px; flex:none}
+.gneedle{transform-origin:66px 66px; animation:needle 6s ease-in-out infinite}
+@keyframes needle{0%,100%{transform:rotate(-38deg)} 22%{transform:rotate(6deg)}
+ 45%{transform:rotate(30deg)} 62%{transform:rotate(48deg)} 80%{transform:rotate(14deg)}}
+.gtext .st{font-family:var(--mono); font-size:13px; color:var(--amber); letter-spacing:.16em; animation:blip 1.6s infinite}
+.gtext .sn{font-size:10.5px; color:var(--mut2); margin-top:4px; line-height:1.45}
+.teldisclaimer{font-family:var(--mono); font-size:9px; color:var(--mut2); letter-spacing:.06em; text-align:center}
+
+/* ============================================================
+   SLIDE 8 — TECHNOLOGY
+============================================================ */
+#s8 .cols{grid-template-columns:1fr 420px; gap:30px}
+.techgrid{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+.tch{display:flex; align-items:center; gap:13px; border:1px solid var(--line); border-radius:12px;
+  padding:11px 15px; background:rgba(13,28,49,.6); transition:border-color .25s}
+.tch:hover{border-color:var(--cyan)}
+.tch .ico{width:36px; height:36px; border-radius:10px; flex:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(56,189,248,.1); border:1px solid var(--cyanDim); color:var(--cyan)}
+.tch .k{font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--mut2); text-transform:uppercase}
+.tch .v{font-size:13.5px; color:#e9f2fc; font-weight:600}
+.whylist{margin:14px 0 0; padding:0; list-style:none}
+.whylist li{display:flex; gap:9px; font-size:12px; color:var(--mut); line-height:1.5; margin-bottom:5px}
+.whylist b{color:#dcebfa}
+.whylist .ic{width:14px; height:14px; color:var(--green); margin-top:2px}
+/* fps chart */
+.chart .row{margin-bottom:13px}
+.chart .lab{display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px;
+  color:var(--mut); margin-bottom:5px}
+.chart .lab b{color:#dcebfa; font-weight:600}
+.chart .track{height:14px; border-radius:7px; background:rgba(29,58,92,.5); overflow:hidden; position:relative}
+.chart .fill{position:absolute; inset:0 auto 0 0; width:0; border-radius:7px;
+  background:linear-gradient(90deg,#1d5c8a,var(--cyan)); box-shadow:0 0 12px rgba(56,189,248,.4)}
+.slide.active .chart .fill{width:var(--w); transition:width 1.25s cubic-bezier(.2,.7,.2,1); transition-delay:var(--d,0.2s)}
+.chart .fill.fast{background:linear-gradient(90deg,#1f7a5c,var(--green)); box-shadow:0 0 12px rgba(52,211,153,.4)}
+.chart .fill.slow{background:linear-gradient(90deg,#5c4a1d,var(--amber)); box-shadow:0 0 10px rgba(251,191,36,.3)}
+.chart .fnote{font-family:var(--mono); font-size:9.5px; color:var(--mut2); margin-top:10px; line-height:1.5}
+.notebar{margin-top:18px; display:flex; gap:11px; align-items:center; border:1px dashed var(--lineHi);
+  border-radius:10px; padding:10px 15px; font-size:12px; color:var(--mut)}
+.notebar .ic{color:var(--amber); width:16px; height:16px}
+
+/* ============================================================
+   SLIDE 9 — OUTCOMES & FUTURE
+============================================================ */
+#s9 .cols{grid-template-columns:1.06fr 1fr; gap:30px}
+.outlist{list-style:none; margin:6px 0 0; padding:0; display:grid; grid-template-columns:1fr; gap:8px}
+.outlist li{display:flex; gap:11px; align-items:flex-start; font-size:13px; color:#c9d9ee; line-height:1.5;
+  border:1px solid transparent; border-radius:9px; padding:6px 10px; transition:.25s}
+.outlist li:hover{border-color:var(--line); background:rgba(13,28,49,.5)}
+.tick{width:18px; height:18px; flex:none; margin-top:1px; border-radius:6px; color:var(--green);
+  background:rgba(52,211,153,.12); display:flex; align-items:center; justify-content:center}
+.tick .ic{width:11px; height:11px}
+.futuregrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px}
+.fut{display:flex; align-items:center; gap:11px; border:1px solid var(--line); border-radius:11px;
+  padding:10px 13px; background:rgba(13,28,49,.55); font-size:12.5px; color:#c9d9ee;
+  transition:.25s; cursor:default}
+.fut:hover{border-color:var(--teal); box-shadow:0 0 14px rgba(45,212,191,.15); transform:translateY(-2px)}
+.fut .em{font-size:19px; filter:saturate(1.2)}
+.panelhead{display:flex; align-items:center; gap:10px; font-size:16px; font-weight:700; color:#fff; margin-bottom:4px}
+.panelhead .ic{color:var(--cyan); width:19px; height:19px}
+.panelsub{font-size:12px; color:var(--mut2); margin-bottom:8px}
+
+/* ============================================================
+   SLIDE 10 — CONCLUSION
+============================================================ */
+#s10{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center}
+.radar{position:absolute; left:50%; top:46%; width:560px; height:560px; transform:translate(-50%,-50%);
+  pointer-events:none; z-index:0}
+.radar span{position:absolute; inset:0; border:1px solid rgba(56,189,248,.22); border-radius:50%;
+  animation:ring 4s linear infinite; animation-delay:var(--rd)}
+.radar span:nth-child(2){inset:70px} .radar span:nth-child(3){inset:140px}
+@keyframes ring{from{transform:scale(.72); opacity:.9} to{transform:scale(1.06); opacity:0}}
+#s10 .kick{justify-content:center}
+#s10 .kick::after{display:none}
+#s10 h2.t{font-size:38px; max-width:860px}
+#s10 .pipechain{display:flex; align-items:center; gap:9px; flex-wrap:wrap; justify-content:center; margin:24px 0 20px; z-index:1}
+#s10 .pc-chip{font-family:var(--mono); font-size:11.5px; letter-spacing:.05em; color:#d5ecfd;
+  border:1px solid var(--lineHi); background:rgba(14,35,58,.8); padding:9px 14px; border-radius:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#s10 .pc-a{color:var(--cyan); font-size:16px; animation:pulseA 1.5s infinite}
+#s10 .closing{color:var(--mut); font-size:15.5px; line-height:1.7; max-width:780px; z-index:1}
+#s10 .closing b{color:#fff}
+#s10 .fin{margin-top:34px; z-index:1}
+#s10 .fin .big{font-size:56px; font-weight:800; letter-spacing:-.01em;
+  background:linear-gradient(90deg,#7dd3fc,#38bdf8 50%,#818cf8);
+  -webkit-background-clip:text; background-clip:text; color:transparent}
+#s10 .fin .sm{font-family:var(--mono); font-size:11px; letter-spacing:.34em; color:var(--mut2); margin-top:7px}
+#s10 .fin .ty{font-size:15px; letter-spacing:.42em; color:#cfe6fb; margin-top:14px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+  .rv{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<!-- icon symbols -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="5.5" cy="18.5" r="2.6"/><circle cx="18.5" cy="5.5" r="2.6"/><path d="M7.5 16.5c5 0 3-9 8.5-9"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l10 5-10 5L2 8z"/><path d="M2 12.5l10 5 10-5"/><path d="M2 17l10 5 10-5"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 15.5a8.5 8.5 0 0116 0"/><path d="M12 15.5l4.5-4.5"/><path d="M2.5 19.5h19"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8l7.2 3v5.4c0 5-3.6 8.2-7.2 10-3.6-1.8-7.2-5-7.2-10V5.8z"/><path d="M12 8.5v4"/><path d="M12 15.6v.4"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8.5 21h7M12 17v4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="M15.5 11l6-3.5v9l-6-3.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8L19.5 12 7 19.2z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2.5 4.5h6a3.5 3.5 0 013.5 3.5v12a3 3 0 00-3-3h-6.5z"/><path d="M21.5 4.5h-6A3.5 3.5 0 0012 8v12a3 3 0 013-3h6.5z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.5S5 16 5 10.3a7 7 0 0114 0c0 5.7-7 11.2-7 11.2z"/><circle cx="12" cy="10.3" r="2.6"/></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M2 12h20M12 2v20M5 9l-3 3 3 3M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3 3-3"/></symbol>
+    <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.2 16.8L16.8 3.2l4 4L7.2 20.8z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.2L22.2 20.8H1.8z"/><path d="M12 9.5v4.5"/><path d="M12 17v.4"/></symbol>
+    <symbol id="i-road" viewBox="0 0 24 24"><path d="M5.5 21L8.5 3M18.5 21L15.5 3"/><path d="M12 4v3.5M12 11v3.5M12 18v3.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6.8V12l3.4 2.2"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2L3.5 13.5H11L10 22l9.5-11.5H13z"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="5.5" r="2.6"/><circle cx="6" cy="18.5" r="2.6"/><circle cx="18" cy="9.5" r="2.6"/><path d="M6 8v8M18 12.2c0 3.4-3 4.3-6.6 4.3"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.2a2.9 2.9 0 015.6 1c0 1.9-2.8 2.3-2.8 4"/><path d="M12 17v.4"/></symbol>
+  </defs>
+</svg>
+
+<div id="app">
+<div id="deck">
+  <div id="bar"><i></i></div>
+  <div id="hud"><span class="dot"></span> AV-PERCEPTION &middot; PROJECT DECK &middot; 2026</div>
+  <div id="count"><b>01</b> / 10</div>
+  <div id="hint">&#8592; &#8594; NAVIGATE &middot; CLICK / SWIPE &middot; <b>F</b> FULLSCREEN</div>
+
+  <!-- ================= SLIDE 1 : TITLE ================= -->
+  <section class="slide active" id="s1">
+    <div class="rv" style="--d:.05s">
+      <div class="kick">Project Presentation &middot; 2026</div>
+    </div>
+    <h1 class="rv" style="--d:.15s">AI-Based <span class="hl">Real-Time Object Detection</span> and Perception System for Autonomous&nbsp;Vehicles</h1>
+    <div class="chips rv" style="--d:.3s">
+      <span class="chip">AI</span><span class="plus">+</span>
+      <span class="chip">OBJECT DETECTION</span><span class="plus">+</span>
+      <span class="chip">ENVIRONMENTAL PERCEPTION</span>
+    </div>
+
+    <div class="meta panel rv" style="--d:.45s">
+      <div class="row">
+        <div class="lab">Presented by</div>
+        <div class="val">
+          <div class="member"><span class="nm">Name 1</span><span class="roll">Roll No. XX</span></div>
+          <div class="member"><span class="nm">Name 2</span><span class="roll">Roll No. XX</span></div>
+          <div class="member"><span class="nm">Name 3</span><span class="roll">Roll No. XX</span></div>
+          <div class="member"><span class="nm">Name 4</span><span class="roll">Roll No. XX</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="lab">Under the guidance of</div>
+        <div class="val">Guide Name</div>
+      </div>
+      <div class="row">
+        <div class="lab">Department</div>
+        <div class="val">Department Name<br>College / University Name</div>
+      </div>
+    </div>
+
+    <div class="scanbeam"></div>
+    <div class="roadwrap"><div class="lanes"></div></div>
+  </section>
+
+  <!-- ================= SLIDE 2 : INTRODUCTION ================= -->
+  <section class="slide" id="s2">
+    <div class="rv" style="--d:.05s"><div class="kick">01 &middot; Introduction</div></div>
+    <h2 class="t rv" style="--d:.12s">What is Autonomous-Vehicle <em>Perception</em>?</h2>
+    <p class="lead rv" style="--d:.2s">Autonomous vehicles must continuously understand their surroundings to operate safely.
+      A <b>perception system</b> processes information from sensors such as cameras and converts it into
+      meaningful information about the environment.</p>
+
+    <div class="cols">
+      <div>
+        <div class="rv" style="--d:.3s; font-family:var(--mono); font-size:11px; letter-spacing:.22em; color:var(--mut2); text-transform:uppercase; margin-bottom:10px">Our proposed system aims to</div>
+        <div class="aims">
+          <div class="aim rv" style="--d:.36s"><svg class="ic"><use href="#i-check"/></svg><span>Analyze road scenes using visual input</span></div>
+          <div class="aim rv" style="--d:.42s"><svg class="ic"><use href="#i-check"/></svg><span>Detect important objects around the vehicle</span></div>
+          <div class="aim rv" style="--d:.48s"><svg class="ic"><use href="#i-check"/></svg><span>Track objects across consecutive frames</span></div>
+          <div class="aim rv" style="--d:.54s"><svg class="ic"><use href="#i-check"/></svg><span>Understand position &amp; movement of surroundings</span></div>
+          <div class="aim rv" style="--d:.6s"><svg class="ic"><use href="#i-check"/></svg><span>Identify objects relevant to the vehicle&rsquo;s path</span></div>
+          <div class="aim rv" style="--d:.66s"><svg class="ic"><use href="#i-check"/></svg><span>Support safety-related decision making</span></div>
+        </div>
+        <div class="quote rv" style="--d:.78s">
+          <svg class="ic" style="color:var(--cyan); width:22px; height:22px"><use href="#i-zap"/></svg>
+          <span><b>Key idea —</b> the goal is not just to <b>detect objects</b>, but to <b>understand the surrounding driving environment</b>.</span>
+        </div>
+      </div>
+
+      <div class="rv" style="--d:.45s">
+        <div class="cam">
+          <div class="scene">
+            <div class="horizon"></div>
+            <div class="asphalt"></div>
+            <div class="car"></div>
+            <div class="person"></div>
+            <div class="tl"></div>
+          </div>
+          <div class="bx car-b" data-l="CAR 0.94" data-id="#ID 12" style="--bd:.6s"></div>
+          <div class="bx per-b" data-l="PERSON 0.88" data-id="#ID 07" style="--bd:1.5s"></div>
+          <div class="bx tl-b" data-l="TRAFFIC LIGHT 0.81" data-id="#ID 03" style="--bd:2.4s"></div>
+          <div class="scanline"></div>
+          <div class="hudline"><span class="rec"></span> LIVE PERCEPTION FEED</div>
+          <div class="fps" id="fpsv">&#9679; 30 FPS</div>
+          <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+        </div>
+        <div class="cam-cap">DETECTION &rarr; TRACKING &rarr; PERCEPTION &rarr; RISK</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 3 : PROBLEM ================= -->
+  <section class="slide" id="s3">
+    <div class="rv" style="--d:.05s"><div class="kick">02 &middot; Problem Statement</div></div>
+    <h2 class="t rv" style="--d:.12s">Raw images are <em>not enough</em></h2>
+    <p class="lead rv" style="--d:.2s">A camera provides a continuous stream of images &mdash; but raw pixels do not tell an autonomous
+      vehicle what actions may be required. <b>Simply detecting an object is not enough.</b> The system may need to determine:</p>
+
+    <div class="cols" style="grid-template-columns:1.15fr 1fr; margin-top:6px">
+      <div>
+        <div class="qgrid">
+          <div class="q rv" style="--d:.3s"><svg class="ic"><use href="#i-help"/></svg><span><b>What</b> object is present?</span></div>
+          <div class="q rv" style="--d:.36s"><svg class="ic"><use href="#i-pin"/></svg><span><b>Where</b> is it located?</span></div>
+          <div class="q rv" style="--d:.42s"><svg class="ic"><use href="#i-move"/></svg><span><b>How</b> is it moving?</span></div>
+          <div class="q rv" style="--d:.48s"><svg class="ic"><use href="#i-ruler"/></svg><span><b>How close</b> is it to the vehicle?</span></div>
+          <div class="q rv" style="--d:.54s"><svg class="ic"><use href="#i-road"/></svg><span>Is it in the <b>driving region</b>?</span></div>
+          <div class="q rv" style="--d:.6s"><svg class="ic"><use href="#i-alert"/></svg><span>Could it create <b>collision risk</b>?</span></div>
+        </div>
+        <div class="quote rv" style="--d:.72s">
+          <svg class="ic" style="color:var(--cyan); width:22px; height:22px"><use href="#i-eye"/></svg>
+          <span>Object detection, tracking, spatial understanding and safety analysis are often <b>treated as separate problems</b>.</span>
+        </div>
+      </div>
+
+      <div class="panel rv" style="--d:.5s">
+        <div class="frag-tag">&#9888; Existing challenge &mdash; studied separately</div>
+        <div class="frag">
+          <div class="fb"><svg class="ic"><use href="#i-target"/></svg><br>Detection</div>
+          <div class="fb"><svg class="ic"><use href="#i-route"/></svg><br>Tracking</div>
+          <div class="fb"><svg class="ic"><use href="#i-layers"/></svg><br>Spatial</div>
+          <div class="fb"><svg class="ic"><use href="#i-shield"/></svg><br>Safety</div>
+        </div>
+        <div class="merge"><div class="ar"></div></div>
+        <div class="pipe"><i></i>Single Real-Time Perception Pipeline</div>
+        <div class="pipe-tag">&#10003; Proposed direction</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 4 : OBJECTIVES ================= -->
+  <section class="slide" id="s4">
+    <div class="rv" style="--d:.05s"><div class="kick">03 &middot; Objectives</div></div>
+    <h2 class="t rv" style="--d:.12s">Six <em>project objectives</em></h2>
+
+    <div class="objgrid">
+      <div class="rv" style="--d:.22s"><div class="objcard"><span class="num">01</span>
+        <div class="ico"><svg class="ic"><use href="#i-target"/></svg></div>
+        <h3>Real-Time Object Detection</h3>
+        <p>Explore AI-based models such as the <b>YOLO family</b> to detect objects in road scenes.</p>
+      </div></div>
+      <div class="rv" style="--d:.3s"><div class="objcard"><span class="num">02</span>
+        <div class="ico"><svg class="ic"><use href="#i-route"/></svg></div>
+        <h3>Object Tracking</h3>
+        <p>Track detected objects across consecutive frames and maintain their identities.</p>
+      </div></div>
+      <div class="rv" style="--d:.38s"><div class="objcard"><span class="num">03</span>
+        <div class="ico"><svg class="ic"><use href="#i-layers"/></svg></div>
+        <h3>Environmental Perception</h3>
+        <p>Analyze the location and relevance of detected objects within the driving environment.</p>
+      </div></div>
+      <div class="rv" style="--d:.46s"><div class="objcard"><span class="num">04</span>
+        <div class="ico"><svg class="ic"><use href="#i-gauge"/></svg></div>
+        <h3>Distance &amp; Movement Analysis</h3>
+        <p>Investigate proximity estimation and analyze object movement over time.</p>
+      </div></div>
+      <div class="rv" style="--d:.54s"><div class="objcard"><span class="num">05</span>
+        <div class="ico"><svg class="ic"><use href="#i-shield"/></svg></div>
+        <h3>Collision-Risk Analysis</h3>
+        <p>Explore metrics such as <b>Time-to-Collision (TTC)</b> to identify dangerous situations.</p>
+      </div></div>
+      <div class="rv" style="--d:.62s"><div class="objcard"><span class="num">06</span>
+        <div class="ico"><svg class="ic"><use href="#i-monitor"/></svg></div>
+        <h3>Real-Time Visualization</h3>
+        <p>Display detected objects and perception info from recorded video or a live camera.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 5 : LITERATURE ================= -->
+  <section class="slide" id="s5">
+    <div class="rv" style="--d:.05s"><div class="kick">04 &middot; Literature Survey</div></div>
+    <h2 class="t rv" style="--d:.12s">Five papers shaped the <em>foundation</em></h2>
+
+    <div class="stats">
+      <div class="stat rv" style="--d:.2s"><span class="n" data-count="5">0</span><span class="l">Papers reviewed</span></div>
+      <div class="stat rv" style="--d:.28s"><span class="n" data-count="100000">0</span><span class="l">Videos in BDD100K</span></div>
+      <div class="stat rv" style="--d:.36s"><span class="n" data-count="10">0</span><span class="l">Perception tasks covered</span></div>
+    </div>
+
+    <div class="lit-rows">
+      <div class="lit rv" style="--d:.42s">
+        <div class="pt"><b>BDD100K: A Diverse Driving Dataset for Heterogeneous Multitask Learning</b><br><span class="venue">CVPR 2020 &middot; F. Yu et al.</span></div>
+        <span class="tag dataset">DATASET</span>
+        <div class="pc">Diverse driving data &amp; multiple perception tasks for training and evaluation</div>
+      </div>
+      <div class="lit rv" style="--d:.5s">
+        <div class="pt"><b>You Only Look Once: Unified, Real-Time Object Detection</b><br><span class="venue">CVPR 2016 &middot; J. Redmon et al.</span></div>
+        <span class="tag detection">DETECTION</span>
+        <div class="pc">Foundation for fast AI-based object detection</div>
+      </div>
+      <div class="lit rv" style="--d:.58s">
+        <div class="pt"><b>ByteTrack: Multi-Object Tracking by Associating Every Detection Box</b><br><span class="venue">ECCV 2022 &middot; Y. Zhang et al.</span></div>
+        <span class="tag tracking">TRACKING</span>
+        <div class="pc">Maintains object identities across video frames</div>
+      </div>
+      <div class="lit rv" style="--d:.66s">
+        <div class="pt"><b>3D Object Detection for Autonomous Driving: A Comprehensive Survey</b><br><span class="venue">IJCV 2023 &middot; J. Mao et al.</span></div>
+        <span class="tag perception">3D PERCEPTION</span>
+        <div class="pc">Spatial understanding &amp; different sensing approaches</div>
+      </div>
+      <div class="lit rv" style="--d:.74s">
+        <div class="pt"><b>3D Object Detection for Autonomous Driving: A Survey</b><br><span class="venue">Pattern Recognition 2022 &middot; R. Qian et al.</span></div>
+        <span class="tag perception">3D DETECTION</span>
+        <div class="pc">Overview of perception methods, datasets and challenges</div>
+      </div>
+    </div>
+
+    <div class="flowline rv" style="--d:.86s">
+      <span class="lab">Literature insight &mdash; perception is broader than detection:</span>
+      <span class="f">DETECTION</span><span class="a">&rarr;</span>
+      <span class="f">TRACKING</span><span class="a">&rarr;</span>
+      <span class="f">SPATIAL</span><span class="a">&rarr;</span>
+      <span class="f">TEMPORAL</span><span class="a">&rarr;</span>
+      <span class="f">SAFETY</span>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 6 : ARCHITECTURE ================= -->
+  <section class="slide" id="s6">
+    <div class="rv" style="--d:.05s"><div class="kick">05 &middot; Proposed System</div></div>
+    <h2 class="t rv" style="--d:.12s">System <em>architecture</em></h2>
+
+    <div class="cols">
+      <div class="arch rv" style="--d:.25s">
+        <svg viewBox="0 0 464 566" role="img" aria-label="Perception pipeline architecture">
+          <!-- wires -->
+          <g>
+            <path class="awire" d="M232 44 V70"/>
+            <path class="awire" d="M232 128 V154"/>
+            <path class="awire" d="M232 212 V238"/>
+            <path class="awire" d="M232 296 V312"/>
+            <path class="awire" d="M232 312 L82 322"/>
+            <path class="awire" d="M232 312 L232 322"/>
+            <path class="awire" d="M232 312 L382 322"/>
+            <path class="awire" d="M82 380 V396 L232 412"/>
+            <path class="awire" d="M232 380 V412"/>
+            <path class="awire" d="M382 380 V396 L232 412"/>
+            <path class="awire" d="M232 412 V436"/>
+            <path class="awire" d="M232 494 V520"/>
+          </g>
+          <!-- traveling pulses -->
+          <circle class="pulse" r="4"><animateMotion dur="2.4s" repeatCount="indefinite" path="M232 44 V520"/></circle>
+          <circle class="pulse" r="3"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite" path="M232 296 L82 380"/></circle>
+          <circle class="pulse" r="3"><animateMotion dur="2.4s" begin="-1.6s" repeatCount="indefinite" path="M232 296 L382 380"/></circle>
+
+          <!-- input node -->
+          <g>
+            <rect class="abox2" x="152" y="8" width="160" height="36" rx="18"/>
+            <text class="asub" x="232" y="30" style="font-size:10.5px; fill:#9fd8f8">CAMERA / VIDEO</text>
+          </g>
+
+          <!-- detection -->
+          <g>
+            <rect class="abox aboxglow" style="--i:0" x="122" y="70" width="220" height="58" rx="10"/>
+            <text class="alab" x="232" y="94">AI Object Detection</text>
+            <text class="asub" x="232" y="113">YOLO / SIMILAR</text>
+          </g>
+          <!-- tracking -->
+          <g>
+            <rect class="abox aboxglow" style="--i:1" x="122" y="154" width="220" height="58" rx="10"/>
+            <text class="alab" x="232" y="178">Object Tracking</text>
+            <text class="asub" x="232" y="197">IDENTITIES ACROSS FRAMES</text>
+          </g>
+          <!-- perception -->
+          <g>
+            <rect class="abox aboxglow" style="--i:2" x="122" y="238" width="220" height="58" rx="10"/>
+            <text class="alab" x="232" y="262">Environmental</text>
+            <text class="alab" x="232" y="281">Perception</text>
+          </g>
+          <!-- parallel analyses -->
+          <g>
+            <rect class="abox aboxglow" style="--i:3" x="22" y="322" width="120" height="58" rx="10"/>
+            <text class="alab" x="82" y="346" style="font-size:13.5px">Position</text>
+            <text class="asub" x="82" y="365">ANALYSIS</text>
+          </g>
+          <g>
+            <rect class="abox aboxglow" style="--i:4" x="172" y="322" width="120" height="58" rx="10"/>
+            <text class="alab" x="232" y="346" style="font-size:13.5px">Distance</text>
+            <text class="asub" x="232" y="365">ANALYSIS</text>
+          </g>
+          <g>
+            <rect class="abox aboxglow" style="--i:5" x="322" y="322" width="120" height="58" rx="10"/>
+            <text class="alab" x="382" y="346" style="font-size:13.5px">Movement</text>
+            <text class="asub" x="382" y="365">ANALYSIS</text>
+          </g>
+          <!-- risk -->
+          <g>
+            <rect class="abox aboxglow" style="--i:6; stroke:#7a5a1e" x="122" y="436" width="220" height="58" rx="10"/>
+            <text class="alab" x="232" y="460">Collision / Risk</text>
+            <text class="asub" x="232" y="479" style="fill:#e8c16a">TTC &middot; RISK LEVELS</text>
+          </g>
+          <!-- safety -->
+          <g>
+            <rect x="122" y="520" width="220" height="40" rx="10" fill="#0c3a2e" stroke="#2dd4bf" stroke-width="1.4"/>
+            <text class="alab" x="232" y="545" style="font-size:13.5px; fill:#a7f3d0">Safety &amp; Visualization</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="arch-inout">
+        <div class="iochip rv" style="--d:.4s">
+          <div class="h">&#9679; Input</div>
+          <div class="b">Recorded driving video <b>or</b> live camera feed, processed frame by frame.</div>
+        </div>
+        <div class="iochip rv" style="--d:.5s">
+          <div class="h">&#9679; Output</div>
+          <div class="b">Detected &amp; tracked objects + environmental information + potential safety / risk information.</div>
+        </div>
+      </div>
+
+      <div class="arch-inout">
+        <div class="feat rv" style="--d:.55s">
+          <div class="h"><svg class="ic"><use href="#i-branch"/></svg>Parallel analysis</div>
+          <p>Position, distance and movement are analyzed as parallel branches of the same perception layer.</p>
+        </div>
+        <div class="feat rv" style="--d:.65s">
+          <div class="h"><svg class="ic"><use href="#i-cpu"/></svg>Modular design</div>
+          <p>Each component can be improved or replaced independently &mdash; model, tracker, estimators.</p>
+        </div>
+        <div class="feat rv" style="--d:.75s">
+          <div class="h"><svg class="ic"><use href="#i-clock"/></svg>Real-time path</div>
+          <p>The complete pipeline is designed for low-latency, frame-by-frame operation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 7 : METHODOLOGY ================= -->
+  <section class="slide" id="s7">
+    <div class="rv" style="--d:.05s"><div class="kick">06 &middot; Methodology</div></div>
+    <h2 class="t rv" style="--d:.12s">How the system will <em>work</em></h2>
+
+    <div class="cols">
+      <div class="steps">
+        <div class="step rv" style="--d:.2s"><div class="dot">1</div><div><h4><span class="sn">STEP</span>Capture</h4><p>Obtain frames from a camera or recorded driving video.</p></div></div>
+        <div class="step rv" style="--d:.27s"><div class="dot">2</div><div><h4><span class="sn">STEP</span>Detect</h4><p>An AI object-detection model identifies road objects and their locations.</p></div></div>
+        <div class="step rv" style="--d:.34s"><div class="dot">3</div><div><h4><span class="sn">STEP</span>Track</h4><p>A multi-object tracker associates objects across consecutive frames.</p></div></div>
+        <div class="step rv" style="--d:.41s"><div class="dot">4</div><div><h4><span class="sn">STEP</span>Analyze</h4><p>Object position &middot; movement &middot; driving-region relevance &middot; approximate distance.</p></div></div>
+        <div class="step rv" style="--d:.48s"><div class="dot">5</div><div><h4><span class="sn">STEP</span>Temporal analysis</h4><p>Information across frames studies motion and can estimate Time-to-Collision (TTC).</p></div></div>
+        <div class="step rv" style="--d:.55s"><div class="dot">6</div><div><h4><span class="sn">STEP</span>Risk assessment</h4><p>Available information is combined to classify the level of collision risk.</p></div></div>
+        <div class="step rv" style="--d:.62s"><div class="dot">7</div><div><h4><span class="sn">STEP</span>Visualization</h4><p>A real-time interface displays the perceived environment and safety information.</p></div></div>
+      </div>
+
+      <div class="tel">
+        <div class="telcam rv" style="--d:.4s">
+          <div class="asphalt"></div>
+          <div class="car"></div>
+          <div class="bx2"></div>
+          <div class="bx2 p"></div>
+          <div class="hudline" style="top:8px; left:10px"><span class="rec"></span> FRAME-BY-FRAME</div>
+        </div>
+        <div class="readouts rv" style="--d:.55s">
+          <div class="ro"><div class="k">Nearest object</div><div class="v" id="tDist">12.4 m</div></div>
+          <div class="ro"><div class="k">Closing speed</div><div class="v warn" id="tSpd">8.6 m/s</div></div>
+          <div class="ro"><div class="k">Time-to-collision</div><div class="v crit" id="tTtc">1.4 s</div></div>
+          <div class="ro"><div class="k">Objects tracked</div><div class="v" id="tObj">7</div></div>
+        </div>
+        <div class="gaugewrap rv" style="--d:.68s">
+          <svg class="gauge" viewBox="0 0 132 78">
+            <path d="M10 66 A56 56 0 0 1 38 20" fill="none" stroke="#34d399" stroke-width="9"/>
+            <path d="M40 18 A56 56 0 0 1 66 10" fill="none" stroke="#fbbf24" stroke-width="9"/>
+            <path d="M68 10 A56 56 0 0 1 94 18" fill="none" stroke="#fb923c" stroke-width="9"/>
+            <path d="M96 20 A56 56 0 0 1 122 66" fill="none" stroke="#f87171" stroke-width="9"/>
+            <g class="gneedle"><line x1="66" y1="66" x2="66" y2="24" stroke="#e9f1fc" stroke-width="3" stroke-linecap="round"/></g>
+            <circle cx="66" cy="66" r="5" fill="#e9f1fc"/>
+          </svg>
+          <div class="gtext">
+            <div class="st">&#9650; WARNING &mdash; MONITORING</div>
+            <div class="sn">Risk levels: SAFE &middot; WARNING &middot; DANGER &middot; CRITICAL</div>
+          </div>
+        </div>
+        <div class="teldisclaimer rv" style="--d:.8s">PROTOTYPE SAFETY OUTPUT &mdash; NOT A CERTIFIED CONTROL SYSTEM</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 8 : TECHNOLOGY ================= -->
+  <section class="slide" id="s8">
+    <div class="rv" style="--d:.05s"><div class="kick">07 &middot; Technology Stack</div></div>
+    <h2 class="t rv" style="--d:.12s">Proposed <em>technologies &amp; tools</em></h2>
+
+    <div class="cols">
+      <div>
+        <div class="techgrid">
+          <div class="tch rv" style="--d:.2s"><div class="ico"><svg class="ic"><use href="#i-cpu"/></svg></div><div><div class="k">Programming</div><div class="v">Python</div></div></div>
+          <div class="tch rv" style="--d:.26s"><div class="ico"><svg class="ic"><use href="#i-eye"/></svg></div><div><div class="k">Computer vision</div><div class="v">OpenCV</div></div></div>
+          <div class="tch rv" style="--d:.32s"><div class="ico"><svg class="ic"><use href="#i-target"/></svg></div><div><div class="k">Object detection</div><div class="v">YOLO-family model</div></div></div>
+          <div class="tch rv" style="--d:.38s"><div class="ico"><svg class="ic"><use href="#i-route"/></svg></div><div><div class="k">Object tracking</div><div class="v">ByteTrack / similar</div></div></div>
+          <div class="tch rv" style="--d:.44s"><div class="ico"><svg class="ic"><use href="#i-zap"/></svg></div><div><div class="k">Deep learning</div><div class="v">PyTorch &middot; Ultralytics</div></div></div>
+          <div class="tch rv" style="--d:.5s"><div class="ico"><svg class="ic"><use href="#i-book"/></svg></div><div><div class="k">Dataset</div><div class="v">BDD100K / driving dataset</div></div></div>
+        </div>
+        <ul class="whylist">
+          <li class="rv" style="--d:.56s"><svg class="ic"><use href="#i-check"/></svg><span><b>Python</b> &mdash; flexible ecosystem for AI and computer vision.</span></li>
+          <li class="rv" style="--d:.6s"><svg class="ic"><use href="#i-check"/></svg><span><b>OpenCV</b> &mdash; camera, video processing and visualization.</span></li>
+          <li class="rv" style="--d:.64s"><svg class="ic"><use href="#i-check"/></svg><span><b>YOLO-family</b> &mdash; suited to real-time object detection.</span></li>
+          <li class="rv" style="--d:.68s"><svg class="ic"><use href="#i-check"/></svg><span><b>Trackers</b> &mdash; follow objects across frames; <b>driving datasets</b> give realistic road scenes.</span></li>
+        </ul>
+        <div class="notebar rv" style="--d:.78s">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <span><b>Note</b> &mdash; final model and technology choices will be determined during development and experimentation.</span>
+        </div>
+      </div>
+
+      <div class="panel chart rv" style="--d:.4s">
+        <div class="panelhead"><svg class="ic"><use href="#i-gauge"/></svg>Why YOLO? Speed matters</div>
+        <div class="panelsub">Reported inference speed &mdash; frames per second</div>
+        <div class="row">
+          <div class="lab"><span>Two-stage detectors</span><b>&asymp; 5 FPS</b></div>
+          <div class="track"><div class="fill slow" style="--w:4%"></div></div>
+        </div>
+        <div class="row">
+          <div class="lab"><span>YOLO (2016)</span><b>45 FPS</b></div>
+          <div class="track"><div class="fill" style="--w:30%"></div></div>
+        </div>
+        <div class="row">
+          <div class="lab"><span>Fast YOLO</span><b>155 FPS</b></div>
+          <div class="track"><div class="fill fast" style="--w:100%"></div></div>
+        </div>
+        <div class="fnote">As reported in the original YOLO paper (CVPR 2016).<br>Real-time throughput is a core requirement: a vehicle cannot wait seconds to understand what is in front of it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 9 : OUTCOMES & FUTURE ================= -->
+  <section class="slide" id="s9">
+    <div class="rv" style="--d:.05s"><div class="kick">08 &middot; Outcomes &amp; Future Scope</div></div>
+    <h2 class="t rv" style="--d:.12s">What we expect to <em>achieve</em> &mdash; and where it can go</h2>
+
+    <div class="cols">
+      <div class="panel rv" style="--d:.25s">
+        <div class="panelhead"><svg class="ic"><use href="#i-check"/></svg>Expected outcomes</div>
+        <div class="panelsub">A working prototype capable of:</div>
+        <ul class="outlist">
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Detecting relevant road objects in real time</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Tracking objects across consecutive frames</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Identifying objects in the vehicle&rsquo;s driving region</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Providing approximate spatial / proximity information</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Analyzing object movement over time</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Exploring collision-risk &amp; TTC-based analysis</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Supporting recorded video and live-camera input</li>
+          <li><span class="tick"><svg class="ic"><use href="#i-check"/></svg></span>Presenting perception through a visual interface</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="rv" style="--d:.4s">
+          <div class="panelhead"><svg class="ic"><use href="#i-pin"/></svg>Future scope</div>
+          <div class="panelsub">The system could later be extended with:</div>
+        </div>
+        <div class="futuregrid">
+          <div class="fut rv" style="--d:.46s"><span class="em">&#128739;&#65039;</span>Lane detection</div>
+          <div class="fut rv" style="--d:.51s"><span class="em">&#128678;</span>Traffic-light &amp; sign recognition</div>
+          <div class="fut rv" style="--d:.56s"><span class="em">&#128207;</span>Advanced depth estimation</div>
+          <div class="fut rv" style="--d:.61s"><span class="em">&#128225;</span>LiDAR &amp; radar integration</div>
+          <div class="fut rv" style="--d:.66s"><span class="em">&#128279;</span>Multi-sensor fusion</div>
+          <div class="fut rv" style="--d:.71s"><span class="em">&#128663;</span>Vehicle trajectory prediction</div>
+          <div class="fut rv" style="--d:.76s"><span class="em">&#128694;</span>Pedestrian movement prediction</div>
+          <div class="fut rv" style="--d:.81s"><span class="em">&#129504;</span>Advanced collision prediction</div>
+          <div class="fut rv" style="--d:.86s"><span class="em">&#9881;&#65039;</span>Steering &amp; braking integration</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SLIDE 10 : CONCLUSION ================= -->
+  <section class="slide" id="s10">
+    <div class="radar"><span style="--rd:0s"></span><span style="--rd:1.3s"></span><span style="--rd:2.6s"></span></div>
+
+    <div class="rv" style="--d:.05s"><div class="kick">09 &middot; Conclusion</div></div>
+    <h2 class="t rv" style="--d:.15s">From detection to <em>understanding</em></h2>
+    <p class="closing rv" style="--d:.28s">
+      Autonomous vehicles need more than simple object recognition &mdash; they must understand
+      <b>objects, positions, movement, and their relationship with the vehicle&rsquo;s path</b>.
+      Our project begins with visual object detection and progressively grows into a broader
+      <b>real-time perception system</b>.
+    </p>
+
+    <div class="pipechain rv" style="--d:.42s">
+      <span class="pc-chip">AI OBJECT DETECTION</span><span class="pc-a">&rarr;</span>
+      <span class="pc-chip">OBJECT TRACKING</span><span class="pc-a">&rarr;</span>
+      <span class="pc-chip">ENVIRONMENTAL PERCEPTION</span><span class="pc-a">&rarr;</span>
+      <span class="pc-chip">DISTANCE &amp; MOVEMENT</span><span class="pc-a">&rarr;</span>
+      <span class="pc-chip" style="border-color:#2dd4bf; color:#a7f3d0">COLLISION-RISK ASSESSMENT</span>
+    </div>
+
+    <div class="fin rv" style="--d:.6s">
+      <div class="big">Questions?</div>
+      <div class="sm ty">THANK YOU &middot;</div>
+      <div class="sm">AI-BASED PERCEPTION FOR AUTONOMOUS VEHICLES</div>
+    </div>
+  </section>
+
+  <nav id="nav" aria-label="Slide navigation">
+    <button id="prev" aria-label="Previous slide">&#8249;</button>
+    <button id="next" aria-label="Next slide">&#8250;</button>
+  </nav>
+  <button id="fs" aria-label="Toggle fullscreen" title="Fullscreen (F)">&#9974;</button>
+</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var deck = document.getElementById("deck");
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var barFill = document.querySelector("#bar i");
+  var countEl = document.querySelector("#count b");
+  var cur = 0;
+
+  /* ---------- fit stage to viewport ---------- */
+  function fit(){
+    var s = Math.min(window.innerWidth/1280, window.innerHeight/720);
+    deck.style.transform = "translate(-50%,-50%) scale(" + s + ")";
+  }
+  window.addEventListener("resize", fit); fit();
+
+  /* ---------- animated counters ---------- */
+  function countUp(el){
+    if (el._counted) return; el._counted = true;
+    var target = parseInt(el.getAttribute("data-count"),10), t0 = null, dur = 1300;
+    function step(t){
+      if(!t0) t0 = t;
+      var p = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(target*e).toLocaleString("en-US");
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- navigation ---------- */
+  function go(n, dir){
+    n = Math.max(0, Math.min(slides.length-1, n));
+    if(n===cur && slides[cur].classList.contains("active")) { syncHash(n); return; }
+    var d = (typeof dir === "number") ? dir : (n > cur ? 1 : -1);
+    deck.classList.toggle("back", d < 0);
+    slides[cur].classList.remove("active");
+    cur = n;
+    slides[cur].classList.add("active");
+    barFill.style.width = ((cur+1)/slides.length*100) + "%";
+    countEl.textContent = String(cur+1).padStart(2,"0");
+    var counters = slides[cur].querySelectorAll("[data-count]");
+    Array.prototype.forEach.call(counters, countUp);
+    syncHash(n);
+  }
+  function syncHash(n){ if(("#"+(n+1)) !== location.hash){ try{ history.replaceState(null,"","#"+(n+1)); }catch(e){} } }
+
+  document.getElementById("prev").addEventListener("click", function(){ go(cur-1,-1); });
+  document.getElementById("next").addEventListener("click", function(){ go(cur+1,1); });
+  deck.addEventListener("click", function(ev){
+    if(ev.target.closest("#nav") || ev.target.closest("#fs")) return;
+    go(cur+1, 1);
+  });
+
+  document.addEventListener("keydown", function(ev){
+    var k = ev.key;
+    if(k==="ArrowRight"||k==="ArrowDown"||k===" "||k==="PageDown"||k==="Enter"){ ev.preventDefault(); go(cur+1,1); }
+    else if(k==="ArrowLeft"||k==="ArrowUp"||k==="PageUp"||k==="Backspace"){ ev.preventDefault(); go(cur-1,-1); }
+    else if(k==="Home"){ ev.preventDefault(); go(0,-1); }
+    else if(k==="End"){ ev.preventDefault(); go(slides.length-1,1); }
+    else if(k==="f"||k==="F"){ toggleFS(); }
+  });
+
+  /* touch swipe */
+  var tx=null, ty=null;
+  deck.addEventListener("touchstart", function(ev){ tx=ev.touches[0].clientX; ty=ev.touches[0].clientY; }, {passive:true});
+  deck.addEventListener("touchend", function(ev){
+    if(tx===null) return;
+    var dx = ev.changedTouches[0].clientX - tx, dy = ev.changedTouches[0].clientY - ty;
+    if(Math.abs(dx) > 46 && Math.abs(dx) > Math.abs(dy)){ go(dx<0 ? cur+1 : cur-1, dx<0?1:-1); }
+    tx=ty=null;
+  }, {passive:true});
+
+  /* fullscreen */
+  function toggleFS(){
+    if(!document.fullscreenElement){ (document.documentElement.requestFullscreen||function(){}).call(document.documentElement); }
+    else if(document.exitFullscreen){ document.exitFullscreen(); }
+  }
+  document.getElementById("fs").addEventListener("click", function(ev){ ev.stopPropagation(); toggleFS(); });
+
+  /* deep-link support: hash changed without reload (e.g. URL edit) */
+  window.addEventListener("hashchange", function(){
+    var n = parseInt((location.hash||"#1").slice(1),10);
+    if(!isNaN(n) && n>=1 && n<=slides.length && (n-1)!==cur) go(n-1, undefined);
+  });
+
+  /* ---------- live telemetry (slide 7) + fps ticker (slide 2) ---------- */
+  var tDist=document.getElementById("tDist"), tSpd=document.getElementById("tSpd"),
+      tTtc=document.getElementById("tTtc"), tObj=document.getElementById("tObj"),
+      fpsv=document.getElementById("fpsv");
+  function rnd(a,b){ return a + Math.random()*(b-a); }
+  setInterval(function(){
+    if(slides[6] && slides[6].classList.contains("active")){
+      var d=rnd(10.8,14.6), s=rnd(7.6,9.8);
+      if(tDist) tDist.textContent = d.toFixed(1)+" m";
+      if(tSpd)  tSpd.textContent  = s.toFixed(1)+" m/s";
+      if(tTtc)  tTtc.textContent  = (d/s).toFixed(1)+" s";
+      if(tObj)  tObj.textContent  = String(5+Math.floor(Math.random()*4));
+    }
+    if(slides[1] && slides[1].classList.contains("active") && fpsv){
+      fpsv.innerHTML = "&#9679; " + (28+Math.floor(Math.random()*4)) + " FPS";
+    }
+  }, 900);
+
+  /* ---------- start ---------- */
+  var start = parseInt((location.hash||"#1").slice(1),10);
+  if(isNaN(start)||start<1||start>slides.length) start=1;
+  slides[0].classList.remove("active");
+  go(start-1, 1);
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3078f8fcbde3e4c',t:'MTc4NzYyOTA3Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f"}' crossorigin="anonymous"></script>
+</body>
+</html>
